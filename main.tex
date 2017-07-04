@@ -1,3 +1,5 @@
+%%LaTeX Source for The Setup Guide for the CSH Beowulf Cluster
+
 \documentclass[a4paper]{article}
 
 %% Language and font encodings
@@ -9,98 +11,112 @@
 \usepackage[a4paper,top=3cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
 
 %% Useful packages
+\usepackage{enumitem}
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage[colorinlistoftodos]{todonotes}
-\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage[colorlinks=true, urlcolor=magenta]{hyperref}
 
-\title{Your Paper}
-\author{You}
+\title{CSH Compute Cluster Node Setup Guide}
+\author{Zach Hart}
 
 \begin{document}
 \maketitle
 
-\begin{abstract}
-Your abstract.
-\end{abstract}
+\section{Things to know before you start}
 
-\section{Introduction}
+So you want to add (or replace) a node to the existing cluster.
+This should be fairly straightforward, as it's been done a bunch and we've encountered pretty much every possible roadblock that you might encounter.
+That being said, if you followed this guide and something went wrong, re-read the guide and make sure you didn't miss something.
+A more condensed version of this guide can be found at the bottom of the \href{https://wiki.csh.rit.edu/wiki/Beowulf_Cluster}{CSH Wiki Entry} on the cluster.
+If you're still having troubles, check out the \href{https://slurm.schedmd.com/troubleshoot.html}{SchedMD Troubleshooting Guide}.
 
-Your introduction goes here! Some examples of commonly used commands and features are listed below, to help you get started. If you have a question, please use the help menu (``?'') on the top bar to search for help or ask us a question. 
+\subsection{Unusual Setup Constraints}
 
-\section{Some examples to get started}
+If the new node is in IH, OpComm should have already let you know of a few network environment constraints you'll need to deal with.
+The most obvious of which is that you will only be able to access this node from within RIT's Network.
+For a CSHer, this presents no real challenge - either use the CSH or RIT VPN, or simply use another machine as a bridge into the network (for example, \texttt{ssh} into \texttt{shell.csh.rit.edu} and then into the node you want to access). 
 
-\subsection{How to include Figures}
+\section{Basic Setup Tasks}
 
-First you have to upload the image file from your computer using the upload link the project menu. Then use the includegraphics command to include it in your document. Use the figure environment and the caption command to add a number and a caption to your figure. See the code for Figure \ref{fig:frog} in this section for an example.
+\subsection{Node Provisioning}
 
-\begin{figure}
-\centering
-\includegraphics[width=0.3\textwidth]{frog.jpg}
-\caption{\label{fig:frog}This frog was uploaded via the project menu.}
-\end{figure}
+Currently, our nodes have been provisioned for us by OpComm, and are all LinkedIn Nodes (2 sockets, 12 Cores per socket, 48 Gigabytes of RAM) running RHEL 7.
+To keep things in the guide simple, we're going to assume the node you're trying to add is identical.
+If your node is different, note that many things in this guide will need to be tailored.
+At the minimum, your node should be running RHEL/CentOS, otherwise our setup scripts will fail.
 
-\subsection{How to add Comments}
+\subsection{Initial Setup}
 
-Comments can be added to your project by clicking on the comment icon in the toolbar above. % * <john.hammersley@gmail.com> 2016-07-03T09:54:16.211Z:
-%
-% Here's an example comment!
-%
-To reply to a comment, simply click the reply button in the lower right corner of the comment, and you can close them when you're done.
+When you first get into a node, create the user accounts that you'll want and make sure those users are in the \texttt{wheel} group so that your user has access to \texttt{sudo}.
+While it's not completely necessary to have a user account other than root (and the slurm and munge users that will be created for you), it's generally good practice to keep one around.
+The next thing that should be done is to update all of the packages on the machine - \textbf{however}, you don't need to do this yourself. Running \texttt{wget http://sega.csh.rit.edu/compute-node.sh \&\& chmod 755 compute-node.sh} will download and set the permissions on the setup script that we've created, allowing you to execute the script.
+The script does still need root access, so as root, run \texttt{./compute-node.sh} - the script doesn't take too long to run, so sit back and watch for any errors.
+A quick breakdown of what the script does is as follows
 
-Comments can also be added to the margins of the compiled PDF using the todo command\todo{Here's a comment in the margin!}, as shown in the example on the right. You can also add inline comments:
-
-\todo[inline, color=green!40]{This is an inline comment.}
-
-\subsection{How to add Tables}
-
-Use the table and tabular commands for basic tables --- see Table~\ref{tab:widgets}, for example. 
-
-\begin{table}
-\centering
-\begin{tabular}{l|r}
-Item & Quantity \\\hline
-Widgets & 42 \\
-Gadgets & 13
-\end{tabular}
-\caption{\label{tab:widgets}An example table.}
-\end{table}
-
-\subsection{How to write Mathematics}
-
-\LaTeX{} is great at typesetting mathematics. Let $X_1, X_2, \ldots, X_n$ be a sequence of independent and identically distributed random variables with $\text{E}[X_i] = \mu$ and $\text{Var}[X_i] = \sigma^2 < \infty$, and let
-\[S_n = \frac{X_1 + X_2 + \cdots + X_n}{n}
-      = \frac{1}{n}\sum_{i}^{n} X_i\]
-denote their mean. Then as $n$ approaches infinity, the random variables $\sqrt{n}(S_n - \mu)$ converge in distribution to a normal $\mathcal{N}(0, \sigma^2)$.
-
-
-\subsection{How to create Sections and Subsections}
-
-Use section and subsections to organize your document. Simply use the section and subsection buttons in the toolbar to create them, and we'll handle all the formatting and numbering automatically.
-
-\subsection{How to add Lists}
-
-You can make lists with automatic numbering \dots
-
-\begin{enumerate}
-\item Like this,
-\item and like this.
-\end{enumerate}
-\dots or bullet points \dots
-\begin{itemize}
-\item Like this,
-\item and like this.
+\begin{itemize}[noitemsep]
+\item Update system packages
+\item Adds \texttt{epel-release} to the system
+\item Installs some desired packages \texttt{git}, \texttt{vim}, \texttt{htop}, etc.
+\item Grabs RIT's slurm repo and CSH's configuration files
+\item Installs \& configures slurm and MUNGE
+\item Starts and enables the slurm daemon
 \end{itemize}
 
-\subsection{How to add Citations and a References List}
+Keep in mind, that for a more seamless update of the cluster, you should update the \texttt{slurm.conf} with the system details of the new node \textit{before} distributing it to the new system.
+To re-distribute this file to all existing nodes in the cluster, run \texttt{slurm-update.py} found in \texttt{/opt/slurm-update} on the master node.
+\textit{Keep in mind} that this file will also need to be updated with the name of the new node - although it can be added \textit{after} you've run it if you've updated \texttt{slurm.conf} \textit{before} running \texttt{compute-node.sh} on the new node.
 
-You can upload a \verb|.bib| file containing your BibTeX entries, created with JabRef; or import your \href{https://www.overleaf.com/blog/184}{Mendeley}, CiteULike or Zotero library as a \verb|.bib| file. You can then cite entries from it, like this: \cite{greenwade93}. Just remember to specify a bibliography style, as well as the filename of the \verb|.bib|.
+\subsection{Cleaning up}
+If you've run \texttt{compute-node.sh} without any problems, and \texttt{slurmd} is up and running, you can go ahead and remove the \texttt{compute-node.sh} script from the machine.
+All the files that were downloaded by this script (that weren't subsequently moved to their intended location) were placed in \texttt{/tmp}, so you don't need to worry about them.
 
-You can find a \href{https://www.overleaf.com/help/97-how-to-include-a-bibliography-using-bibtex}{video tutorial here} to learn more about BibTeX.
+\subsection{Networking}
+You'll likely need to open a port in your firewall for \texttt{slurmd} to communicate with \texttt{slurmctld} on the master node.
+To accomplish this, simply run \texttt{firewall-cmd -{}-permanent -{}-zone=public -{}-add-port=6818/tcp \&\& firewall-cmd -{}-reload} as root on the new compute node.
 
-We hope you find Overleaf useful, and please let us know if you have any feedback using the help menu above --- or use the contact form at \url{https://www.overleaf.com/contact}!
+\subsection{Updating the Cluster}
+At this point, your new node should be good to go, but the cluster doesn't really have any idea that it exists.
+To "update" the cluster so-to-speak, on any node run \texttt{scontrol reconfigure} as root.
+At this point, running \texttt{sinfo} from any node should give you a brief message about the state of the cluster.
+Ideally, if no jobs are being run, your new node will be listed alongside the others as \texttt{idle}.
+If your machine has any other state, or the state has an asterisk appended to it, there are some issues - check out the troubleshooting section to see if we know how to fix it.
 
-\bibliographystyle{alpha}
-\bibliography{sample}
+\section{Troubleshooting}
+
+This should probably be the first place you look if you're having issues setting up a node - issues with the cluster as a whole are better Googled, or solved by a look through the official troubleshooting guide linked at the top of this guide.
+The issues here and their solutions are going to be generally specific to CSH's specific setup.
+
+\subsection{Common Errors}
+
+\subsubsection*{The \texttt{compute-node.sh} setup script fails}
+There are a couple reasons this might happen, paying attention as the script runs to determine where things might fail is the best way to get a head start on diagnosing this issue.
+If there are issues with \texttt{wget} grabbing files from the master node, make sure that \texttt{httpd} is running on \texttt{sega.csh.rit.edu}.
+If there are issues downloading packages from \texttt{epel-release} (namely, \texttt{fail2ban}), ask OpComm to make sure that the proxy settings for yum were set up correctly. Remember, this script must be run as root in order to work.
+
+\subsubsection*{\texttt{slurmd} is reporting issues with \texttt{munge} or \texttt{munged}}
+Run \texttt{journalctl -xe} or check the slurm logs at \texttt{/var/log/slurmd.log}, if the issues appear to do with file ownership, read thoroughly through the \href{https://github.com/dun/munge/wiki/Installation-Guide}{MUNGE setup guide}.
+We use the default file permissions, munge files should be owned by the munge user.
+Once you've confirmed the file permissions, check to see if \texttt{munged} is running - If it is, kill the process.
+Restart the daemon by running \texttt{sudo -u munge /usr/sbin/munged}, \texttt{munged} must be running as the munge user.
+Restart the slurm daemon by running \texttt{systemctl restart slurmd} as root, and check the logs to see if things are okay now.
+
+\subsubsection*{A new node can't communicate with the cluster}
+First, try \texttt{ping}ing the master node - this will test if there are general networking problems between you and the rest of the cluster.
+If you're able to send packets back and forth, the issue lies someplace else.
+\textbf{Make sure that you've opened the correct port in your firewall.}
+Next, run \texttt{ntpdate ntp.rit.edu} - all of the nodes should be synced to RIT's NTP server - keeping the clocks of the nodes as close together as possible is important.
+If your machine jumps in either direction by more than a fraction of a second, run \texttt{scontrol reconfigure} followed by \texttt{sinfo} and see if you're able to communicate again.
+Keep in mind that any state that ends in an asterisk (e.g. \texttt{idle*}, \texttt{down*}) means that the master \textbf{cannot} communicate properly with the node, and the state that it's assigned to the node is an assumption. 
+
+It might be worth it to try and run the command \texttt{scontrol update nodename=<nodename> state=resume} to try and force the cluster to assign a new state to the node.
+If the cluster is able to establish a connection, your machine will change state.
+If the state is not \texttt{idle}, run \texttt{scontrol show node} on the node that isn't communicating to see what the status of the node is.
+If the status changes to any assumed status, it's likely that whatever you've tried hasn't worked - you'll need to try something else.
+Try running \texttt{scontrol ping} from the node that is having problems - If the node believes that the master is down, check \texttt{slurm.conf} to make sure that you have the right settings for the master node.
+If it shows the master as UP, it's time to check the slurmd logs.
+Logs can be found at \texttt{/var/log/slurmd.log}, running \texttt{journalctl -xe} and \texttt{systemctl status slurmd} may also prove helpful.
+
+
 
 \end{document}
